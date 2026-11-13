@@ -66,6 +66,8 @@
     input:focus, select:focus { border-color: #8da7ff; box-shadow: 0 0 0 3px rgba(49,94,232,.09); }
     .trip-layout { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
     .trip-date { color: var(--muted); font-size: 12px; margin-top: 9px; }
+    .trip-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .trip-edit { border-top:1px solid var(--line); margin-top:16px; padding-top:16px; }
     .new-trip { border-top: 1px solid var(--line); margin-top: 19px; padding-top: 17px; }
     .new-trip summary { cursor: pointer; color: #43516a; font-size: 13px; font-weight: 700; list-style: none; }
     .new-trip summary::-webkit-details-marker { display: none; }
@@ -159,7 +161,25 @@
             </select>
             <div id="tripDate" class="trip-date"></div>
           </div>
-          <button class="btn secondary" type="button" onclick="reloadData()">↻ 重新同步</button>
+          <div class="trip-actions">
+            <button class="btn secondary" type="button" onclick="reloadData()">↻ 重新同步</button>
+            <button class="btn secondary" type="button" onclick="showTripEditor()">修改旅程</button>
+            <button class="btn secondary" type="button" onclick="deleteCurrentTrip()">刪除旅程</button>
+          </div>
+        </div>
+        <div id="tripEditPanel" class="trip-edit hidden">
+          <form id="tripEditForm" onsubmit="saveTripEdit(event)">
+            <label for="editTripName">旅遊名稱</label>
+            <input id="editTripName" required maxlength="80">
+            <div class="form-grid">
+              <div><label for="editStartDate">出發日期</label><input id="editStartDate" type="date" required></div>
+              <div><label for="editEndDate">結束日期</label><input id="editEndDate" type="date" required></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn secondary" type="button" onclick="hideTripEditor()" style="margin-right:8px">取消</button>
+              <button id="saveTripEditBtn" class="btn" type="submit">儲存修改</button>
+            </div>
+          </form>
         </div>
         <details class="new-trip">
           <summary>新增一趟旅遊</summary>
@@ -447,7 +467,84 @@ function renderTrips() {
 function selectTrip(tripId) {
   currentTripId = tripId;
   $("tripSelect").value = tripId;
+  hideTripEditor();
   renderItems();
+}
+
+function showTripEditor() {
+  const trip = trips.find(entry => entry.tripId === currentTripId);
+  if (!trip) { alert("請先選擇一趟旅程"); return; }
+  $("editTripName").value = trip.tripName;
+  $("editStartDate").value = trip.startDate;
+  $("editEndDate").value = trip.endDate;
+  $("tripEditPanel").classList.remove("hidden");
+  $("editTripName").focus();
+}
+
+function hideTripEditor() {
+  $("tripEditPanel").classList.add("hidden");
+}
+
+async function saveTripEdit(event) {
+  event.preventDefault();
+  const trip = trips.find(entry => entry.tripId === currentTripId);
+  if (!trip) return;
+  const name = $("editTripName").value.trim();
+  const start = $("editStartDate").value;
+  const end = $("editEndDate").value;
+  if (!name || !start || !end) return;
+  if (end < start) { alert("結束日期不能早於出發日期"); return; }
+  $("saveTripEditBtn").disabled = true;
+  try {
+    await updateRow("Trips!A" + trip.rowNumber + ":E" + trip.rowNumber,
+      [trip.tripId, name, start, end, trip.createdAt]);
+    Object.assign(trip, {tripName:name, startDate:start, endDate:end});
+    renderTrips();
+    $("tripSelect").value = currentTripId;
+    $("tripDate").textContent = start + " — " + end;
+    hideTripEditor();
+    setStatus("旅程已修改並同步至 Google Sheets", "ok");
+  } catch (error) {
+    alert("修改旅程失敗：" + error.message);
+    setStatus("修改失敗：" + error.message, "error");
+  } finally { $("saveTripEditBtn").disabled = false; }
+}
+
+async function clearSheetRange(range) {
+  const url = "https://sheets.googleapis.com/v4/spreadsheets/" + SPREADSHEET_ID +
+    "/values/" + encodeURIComponent(range) + ":clear";
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {Authorization:"Bearer " + accessToken, "Content-Type":"application/json"},
+    body: JSON.stringify({})
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error?.message || "清除資料失敗");
+  return result;
+}
+
+async function deleteCurrentTrip() {
+  const trip = trips.find(entry => entry.tripId === currentTripId);
+  if (!trip) { alert("請先選擇一趟旅程"); return; }
+  const related = statuses.filter(status => status.tripId === trip.tripId);
+  const warning = "確定永久刪除旅程「" + trip.tripName + "」嗎？\n\n此操作會一併清除這趟旅程的所有勾選紀錄，行李基本項目不會受到影響，且無法直接復原。";
+  if (!confirm(warning)) return;
+  try {
+    const ranges = ["Trips!A" + trip.rowNumber + ":E" + trip.rowNumber]
+      .concat(related.map(status => "CheckStatus!A" + status.rowNumber + ":D" + status.rowNumber));
+    await Promise.all(ranges.map(clearSheetRange));
+    trips = trips.filter(entry => entry.tripId !== trip.tripId);
+    statuses = statuses.filter(status => status.tripId !== trip.tripId);
+    currentTripId = "";
+    renderTrips();
+    hideTripEditor();
+    if (trips.length) selectTrip(trips[0].tripId);
+    else renderItems();
+    setStatus("旅程及其勾選紀錄已刪除並同步", "ok");
+  } catch (error) {
+    alert("刪除旅程失敗：" + error.message + "\n請重新同步確認資料狀態。");
+    setStatus("刪除失敗：" + error.message, "error");
+  }
 }
 
 function getStatus(itemId) {
