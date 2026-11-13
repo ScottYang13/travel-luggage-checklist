@@ -7,56 +7,532 @@
   <title>Travel Luggage Checklist</title>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f6fa;
       margin: 0;
-      padding: 40px 20px;
-      text-align: center;
-      color: #333;
+      padding: 24px 16px 50px;
+      font-family: Arial, "Noto Sans TC", sans-serif;
+      background: #f5f6f8;
+      color: #263238;
     }
-    .container {
-      max-width: 480px;
-      margin: 60px auto;
-      padding: 32px 24px;
+    .container { max-width: 760px; margin: auto; }
+    h1 { font-size: 26px; margin-bottom: 6px; }
+    .subtitle { color: #718096; margin-bottom: 24px; }
+    .panel {
       background: white;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.06);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 10px #0000000a;
     }
-    h1 { font-size: 25px; }
-    p { color: #666; line-height: 1.6; }
-    #status { margin-top: 24px; font-size: 14px; }
+    button, input, select { font: inherit; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 18px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d8dee8;
+      border-radius: 8px;
+      background: white;
+    }
+    label { display: block; margin: 12px 0 6px; font-size: 14px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .status { font-size: 14px; color: #64748b; margin-top: 12px; }
+    .category-title {
+      font-size: 17px;
+      font-weight: bold;
+      padding: 12px 0 8px;
+      border-bottom: 1px solid #e8edf3;
+      margin-top: 12px;
+    }
+    .item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 2px;
+      border-bottom: 1px solid #f0f2f5;
+    }
+    .item input {
+      width: 20px;
+      height: 20px;
+      margin: 2px 0 0;
+      flex-shrink: 0;
+      accent-color: #2563eb;
+    }
+    .item-info { flex: 1; min-width: 0; }
+    .item-name { font-weight: 500; }
+    .item-note { font-size: 13px; color: #8993a3; margin-top: 4px; }
+    .item.checked .item-name {
+      color: #9aa3af;
+      text-decoration: line-through;
+    }
+    .muted { color: #8993a3; font-size: 13px; }
+    .hidden { display: none; }
+    .progress { margin-top: 12px; font-size: 14px; color: #2563eb; }
+    @media (max-width: 520px) {
+      .form-grid { grid-template-columns: 1fr; }
+      body { padding: 18px 12px 40px; }
+    }
   </style>
 </head>
+
 <body>
-  <div class="container">
-    <h1>🧳 Travel Luggage Checklist</h1>
-    <p>你的專屬旅遊行李清單</p>
-    <div id="google-login"></div>
-    <div id="status">請使用 Google 帳號登入</div>
+<div class="container">
+  <h1>🧳 Travel Luggage Checklist</h1>
+  <div class="subtitle">你的專屬旅遊行李清單</div>
+
+  <section class="panel">
+    <button id="connectBtn" onclick="connectGoogle()">
+      使用 Google 帳戶授權
+    </button>
+    <div id="status" class="status">尚未連接 Google 試算表</div>
+  </section>
+
+  <div id="app" class="hidden">
+    <section class="panel">
+      <h3>📍 選擇旅遊行程</h3>
+      <label for="tripSelect">目前旅遊</label>
+      <select id="tripSelect" onchange="selectTrip(this.value)">
+        <option value="">請選擇旅遊</option>
+      </select>
+    </section>
+
+    <section class="panel">
+      <h3>➕ 新增旅遊</h3>
+      <form id="tripForm" onsubmit="createTrip(event)">
+        <label for="tripName">旅遊名稱</label>
+        <input id="tripName" required placeholder="例如：2026 東京之旅">
+
+        <div class="form-grid">
+          <div>
+            <label for="startDate">出發日期</label>
+            <input id="startDate" type="date" required>
+          </div>
+          <div>
+            <label for="endDate">結束日期</label>
+            <input id="endDate" type="date" required>
+          </div>
+        </div>
+        <br>
+        <button type="submit" id="createBtn">建立旅遊</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h3>🎒 行李清單</h3>
+      <div id="tripInfo" class="muted">請先選擇一趟旅遊</div>
+      <div id="progress" class="progress"></div>
+      <div id="items"></div>
+    </section>
   </div>
+</div>
 
-  <script>
-    const CLIENT_ID =
-      "229078001792-gmdo6jj61sciidcdmpuegqmotglujt3d.apps.googleusercontent.com";
+<script>
+const CLIENT_ID =
+  "229078001792-gmdo6jj61sciidcdmpuegqmotglujt3d.apps.googleusercontent.com";
 
-    function handleCredentialResponse(response) {
-      document.getElementById("status").textContent =
-        "Google 登入成功！正在準備行李清單…";
-      console.log("Google 登入憑證已取得");
+const SPREADSHEET_ID =
+  "1QGX7B2u_JPPKayvB-NC3sSuoks4FFb5ZlgixpsZGmyw";
+
+const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+
+let tokenClient;
+let accessToken = "";
+let items = [];
+let trips = [];
+let statuses = [];
+let currentTripId = "";
+
+const $ = id => document.getElementById(id);
+
+function setStatus(message) {
+  $("status").textContent = message;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function isTrue(value) {
+  return ["true", "1", "yes", "是"].includes(
+    String(value).trim().toLowerCase()
+  );
+}
+
+function isActive(value) {
+  if (value === undefined || value === null || value === "") return true;
+  return isTrue(value);
+}
+
+function rowNumberFromRange(range) {
+  const match = String(range || "").match(/(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
+function initGoogle() {
+  if (!window.google?.accounts?.oauth2) return false;
+
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPE,
+    callback: async response => {
+      if (response.error) {
+        setStatus("Google 授權失敗：" + response.error);
+        return;
+      }
+
+      accessToken = response.access_token;
+      setStatus("Google 授權成功，正在讀取行李清單…");
+
+      try {
+        await loadAllData();
+        $("app").classList.remove("hidden");
+        $("connectBtn").textContent = "重新授權 Google";
+        setStatus("已連接 Google 試算表");
+      } catch (error) {
+        setStatus("讀取失敗：" + error.message);
+      }
+    }
+  });
+
+  return true;
+}
+
+function connectGoogle() {
+  if (!window.google?.accounts?.oauth2) {
+    setStatus("Google 授權程式尚未載入，請稍後再試");
+    return;
+  }
+
+  if (!tokenClient && !initGoogle()) return;
+
+  tokenClient.requestAccessToken();
+}
+
+async function sheetsRequest(range, method = "GET", body = null) {
+  if (!accessToken) throw new Error("尚未取得 Google 授權");
+
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
+    `/values/${encodeURIComponent(range)}` +
+    (method === "GET" ? "?majorDimension=ROWS" : "");
+
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: "Bearer " + accessToken,
+      "Content-Type": "application/json"
+    },
+    ...(body ? { body: JSON.stringify(body) } : {})
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error?.message || "Google Sheets API 錯誤");
+  }
+
+  return result;
+}
+
+async function appendRows(range, values) {
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
+    `/values/${encodeURIComponent(range)}:append` +
+    "?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS";
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + accessToken,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      majorDimension: "ROWS",
+      values
+    })
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error?.message || "新增資料失敗");
+  }
+
+  return result;
+}
+
+async function updateRow(range, values) {
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
+    `/values/${encodeURIComponent(range)}` +
+    "?valueInputOption=USER_ENTERED";
+
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer " + accessToken,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      majorDimension: "ROWS",
+      values: [values]
+    })
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error?.message || "更新資料失敗");
+  }
+
+  return result;
+}
+
+async function readSheet(name) {
+  const result = await sheetsRequest(`${name}!A:Z`);
+  return result.values || [];
+}
+
+async function loadAllData() {
+  const [itemRows, tripRows, statusRows] = await Promise.all([
+    readSheet("Items"),
+    readSheet("Trips"),
+    readSheet("CheckStatus")
+  ]);
+
+  items = itemRows.slice(1).map((row, index) => ({
+    itemId: row[0] || "",
+    category: row[1] || "未分類",
+    itemName: row[2] || "",
+    quantity: row[3] || "",
+    note: row[4] || "",
+    active: isActive(row[5]),
+    sortOrder: Number(row[6]) || index,
+    rowNumber: index + 2
+  })).filter(item => item.itemId && item.itemName && item.active)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  trips = tripRows.slice(1).map((row, index) => ({
+    tripId: row[0] || "",
+    tripName: row[1] || "",
+    startDate: row[2] || "",
+    endDate: row[3] || "",
+    createdAt: row[4] || "",
+    rowNumber: index + 2
+  })).filter(trip => trip.tripId);
+
+  statuses = statusRows.slice(1).map((row, index) => ({
+    tripId: row[0] || "",
+    itemId: row[1] || "",
+    checked: isTrue(row[2]),
+    updatedAt: row[3] || "",
+    rowNumber: index + 2
+  })).filter(status => status.tripId && status.itemId);
+
+  renderTrips();
+
+  if (currentTripId && trips.some(t => t.tripId === currentTripId)) {
+    $("tripSelect").value = currentTripId;
+    renderItems();
+  } else if (trips.length) {
+    selectTrip(trips[0].tripId);
+  } else {
+    currentTripId = "";
+    renderItems();
+  }
+}
+
+function renderTrips() {
+  const select = $("tripSelect");
+  const previous = currentTripId;
+
+  select.innerHTML =
+    '<option value="">請選擇旅遊</option>' +
+    trips.map(trip => `
+      <option value="${escapeHtml(trip.tripId)}">
+        ${escapeHtml(trip.tripName)}
+      </option>
+    `).join("");
+
+  if (trips.some(t => t.tripId === previous)) {
+    select.value = previous;
+  }
+}
+
+function selectTrip(tripId) {
+  currentTripId = tripId;
+  $("tripSelect").value = tripId;
+  renderItems();
+}
+
+function getStatus(itemId) {
+  return statuses.find(s =>
+    s.tripId === currentTripId && s.itemId === itemId
+  );
+}
+
+function renderItems() {
+  const container = $("items");
+  const trip = trips.find(t => t.tripId === currentTripId);
+
+  if (!trip) {
+    $("tripInfo").textContent = "請先選擇一趟旅遊";
+    $("progress").textContent = "";
+    container.innerHTML = "";
+    return;
+  }
+
+  $("tripInfo").textContent =
+    `${trip.tripName}｜${trip.startDate || "未設定日期"} ～ ${trip.endDate || "未設定日期"}`;
+
+  const categories = [...new Set(items.map(item => item.category))];
+
+  let html = "";
+
+  categories.forEach(category => {
+    const categoryItems = items.filter(item => item.category === category);
+
+    html += `<div class="category-title">${escapeHtml(category)}</div>`;
+
+    categoryItems.forEach(item => {
+      const status = getStatus(item.itemId);
+      const checked = status?.checked || false;
+
+      html += `
+        <div class="item ${checked ? "checked" : ""}">
+          <input
+            type="checkbox"
+            ${checked ? "checked" : ""}
+            onchange="toggleItem('${escapeHtml(item.itemId)}', this)"
+          >
+          <div class="item-info">
+            <div class="item-name">
+              ${escapeHtml(item.itemName)}
+              ${item.quantity ? ` × ${escapeHtml(item.quantity)}` : ""}
+            </div>
+            ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ""}
+          </div>
+        </div>
+      `;
+    });
+  });
+
+  container.innerHTML = html || '<p class="muted">目前沒有啟用的行李項目。</p>';
+  renderProgress();
+}
+
+function renderProgress() {
+  const total = items.length;
+  const done = items.filter(item => getStatus(item.itemId)?.checked).length;
+
+  $("progress").textContent =
+    total ? `已完成 ${done} / ${total} 項` : "";
+}
+
+async function toggleItem(itemId, checkbox) {
+  const checked = checkbox.checked;
+  const item = items.find(i => i.itemId === itemId);
+  if (!item || !currentTripId) return;
+
+  checkbox.disabled = true;
+
+  const existing = getStatus(itemId);
+  const updatedAt = new Date().toISOString();
+
+  try {
+    if (existing) {
+      await updateRow(
+        `CheckStatus!A${existing.rowNumber}:D${existing.rowNumber}`,
+        [currentTripId, itemId, checked, updatedAt]
+      );
+
+      existing.checked = checked;
+      existing.updatedAt = updatedAt;
+    } else {
+      const result = await appendRows("CheckStatus!A:D", [[
+        currentTripId, itemId, checked, updatedAt
+      ]]);
+
+      statuses.push({
+        tripId: currentTripId,
+        itemId,
+        checked,
+        updatedAt,
+        rowNumber: rowNumberFromRange(result.updates?.updatedRange)
+      });
     }
 
-    window.onload = function () {
-      google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredentialResponse
-      });
+    renderItems();
+  } catch (error) {
+    checkbox.checked = !checked;
+    setStatus("儲存失敗：" + error.message);
+    alert("勾選狀態儲存失敗，請確認網路及 Google 授權。");
+  } finally {
+    checkbox.disabled = false;
+  }
+}
 
-      google.accounts.id.renderButton(
-        document.getElementById("google-login"),
-        { theme: "outline", size: "large", text: "signin_with" }
-      );
-    };
-  </script>
+async function createTrip(event) {
+  event.preventDefault();
+
+  const name = $("tripName").value.trim();
+  const start = $("startDate").value;
+  const end = $("endDate").value;
+
+  if (!name || !start || !end) return;
+
+  if (end < start) {
+    alert("結束日期不能早於出發日期");
+    return;
+  }
+
+  const tripId = "trip-" + Date.now();
+  const createdAt = new Date().toISOString();
+
+  $("createBtn").disabled = true;
+
+  try {
+    const result = await appendRows("Trips!A:E", [[
+      tripId, name, start, end, createdAt
+    ]]);
+
+    trips.push({
+      tripId,
+      tripName: name,
+      startDate: start,
+      endDate: end,
+      createdAt,
+      rowNumber: rowNumberFromRange(result.updates?.updatedRange)
+    });
+
+    $("tripForm").reset();
+    renderTrips();
+    selectTrip(tripId);
+    setStatus("旅遊已建立並儲存至 Google 試算表");
+  } catch (error) {
+    alert("建立旅遊失敗：" + error.message);
+  } finally {
+    $("createBtn").disabled = false;
+  }
+}
+</script>
 </body>
 </html>
