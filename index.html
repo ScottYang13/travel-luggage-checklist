@@ -1,0 +1,62 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Luggage Checklist</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f6fa;
+      margin: 0;
+      padding: 40px 20px;
+      text-align: center;
+      color: #333;
+    }
+    .container {
+      max-width: 480px;
+      margin: 60px auto;
+      padding: 32px 24px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.06);
+    }
+    h1 { font-size: 25px; }
+    p { color: #666; line-height: 1.6; }
+    #status { margin-top: 24px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧳 Travel Luggage Checklist</h1>
+    <p>你的專屬旅遊行李清單</p>
+    <div id="google-login"></div>
+    <div id="status">請使用 Google 帳號登入</div>
+  </div>
+
+  <script>
+    const CLIENT_ID =
+      "229078001792-gmdo6jj61sciidcdmpuegqmotglujt3d.apps.googleusercontent.com";
+
+    function handleCredentialResponse(response) {
+      document.getElementById("status").textContent =
+        "Google 登入成功！正在準備行李清單…";
+      console.log("Google 登入憑證已取得");
+    }
+
+    window.onload = function () {
+      google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: handleCredentialResponse
+      });
+
+      google.accounts.id.renderButton(
+        document.getElementById("google-login"),
+        { theme: "outline", size: "large", text: "signin_with" }
+      );
+    };
+  </script>
+</body>
+</html>
