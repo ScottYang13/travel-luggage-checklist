@@ -244,6 +244,7 @@ const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
 let tokenClient;
 let accessToken = "";
+let isSilentAuthAttempt = false;
 let items = [];
 let trips = [];
 let statuses = [];
@@ -284,9 +285,15 @@ function initGoogle() {
     scope: SCOPE,
     callback: async response => {
       if (response.error) {
-        setStatus("Google 授權失敗：" + response.error, "error");
+        if (isSilentAuthAttempt) {
+          setStatus("尚未連接 Google 試算表");
+        } else {
+          setStatus("Google 授權失敗：" + response.error, "error");
+        }
+        isSilentAuthAttempt = false;
         return;
       }
+      isSilentAuthAttempt = false;
       accessToken = response.access_token;
       setStatus("授權成功，正在同步資料…");
       try {
@@ -301,6 +308,18 @@ function initGoogle() {
   });
   return true;
 }
+
+// 網頁重新載入時，嘗試在不顯示帳號選擇視窗的情況下恢復先前授權。
+window.addEventListener("load", () => {
+  if (!initGoogle()) return;
+  isSilentAuthAttempt = true;
+  try {
+    tokenClient.requestAccessToken({ prompt: "" });
+  } catch (error) {
+    isSilentAuthAttempt = false;
+    setStatus("尚未連接 Google 試算表");
+  }
+});
 
 function connectGoogle() {
   if (!window.google?.accounts?.oauth2) {
