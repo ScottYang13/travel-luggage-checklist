@@ -523,15 +523,15 @@ function renderManagerItems() {
     return;
   }
   $("managerItems").innerHTML = items.map(item => {
-    const id = JSON.stringify(item.itemId);
+    const id = encodeURIComponent(item.itemId).replaceAll("'", "%27");
     return '<div class="manage-row ' + (item.active ? "" : "inactive") + '">' +
       '<div><div class="manage-name">' + escapeHtml(item.itemName) + '</div>' +
       '<div class="manage-meta">' + escapeHtml(item.category) +
       (item.quantity ? " · " + escapeHtml(item.quantity) : "") +
       (item.active ? "" : " · 已停用") + '</div></div>' +
-      '<div class="manage-actions"><button class="btn secondary small" type="button" onclick="editItem(' + id + ')">修改</button>' +
-      '<button class="btn small" type="button" onclick="toggleItemActive(' + id + ')">' +
-      (item.active ? "停用" : "啟用") + '</button></div></div>';
+      '<div class="manage-actions"><button class="btn secondary small" type="button" onclick="editItem(decodeURIComponent(\'' + id + '\'))">修改</button>' +
+      '<button class="btn small" type="button" onclick="toggleItemActive(decodeURIComponent(\'' + id + '\'))">' +
+      (item.active ? "停用" : "啟用") + '</button><button class="btn secondary small" type="button" onclick="deleteItem(decodeURIComponent(\'' + id + '\'))">刪除</button></div></div>';
   }).join("");
 }
 
@@ -586,6 +586,21 @@ async function saveItem(event) {
   } finally {
     $("saveItemBtn").disabled = false;
   }
+}
+
+async function deleteItem(itemId) {
+  const item = items.find(entry => entry.itemId === itemId);
+  if (!item) return;
+  if (!confirm("確定永久刪除「" + item.itemName + "」嗎？\n此操作會清空 Google Sheets 中該項目的資料列，無法直接復原。若只是不想顯示，建議使用停用。")) return;
+  try {
+    const range = "Items!A" + item.rowNumber + ":G" + item.rowNumber;
+    const url = "https://sheets.googleapis.com/v4/spreadsheets/" + SPREADSHEET_ID + "/values/" + encodeURIComponent(range) + ":clear";
+    const response = await fetch(url, { method: "POST", headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || "刪除資料失敗");
+    items = items.filter(entry => entry.itemId !== itemId); renderManagerItems(); renderItems();
+    setStatus("項目已刪除並同步至 Google Sheets", "ok");
+  } catch (error) { alert("刪除失敗：" + error.message); setStatus("刪除失敗：" + error.message, "error"); }
 }
 
 async function toggleItemActive(itemId) {
