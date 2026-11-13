@@ -1,150 +1,215 @@
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f7fb">
   <title>Travel Luggage Checklist</title>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
+    :root {
+      --ink: #172033;
+      --muted: #748096;
+      --line: #e8edf4;
+      --blue: #315ee8;
+      --blue-soft: #edf2ff;
+      --green: #16845b;
+      --surface: #ffffff;
+      --page: #f5f7fb;
+      --shadow: 0 12px 35px rgba(30, 48, 85, .06);
+    }
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      padding: 24px 16px 50px;
-      font-family: Arial, "Noto Sans TC", sans-serif;
-      background: #f5f6f8;
-      color: #263238;
-    }
-    .container { max-width: 760px; margin: auto; }
-    h1 { font-size: 26px; margin-bottom: 6px; }
-    .subtitle { color: #718096; margin-bottom: 24px; }
-    .panel {
-      background: white;
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 18px;
-      box-shadow: 0 2px 10px #0000000a;
+      margin: 0; padding: 34px 16px 64px;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "Noto Sans TC", sans-serif;
+      background: var(--page); color: var(--ink);
     }
     button, input, select { font: inherit; }
-    button {
-      border: 0;
-      border-radius: 8px;
-      padding: 11px 18px;
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
+    button { cursor: pointer; }
+    .container { max-width: 820px; margin: 0 auto; }
+    .hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .eyebrow { color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 9px; }
+    h1 { font-size: clamp(25px, 5vw, 34px); letter-spacing: -.04em; margin: 0; line-height: 1.2; }
+    .subtitle { color: var(--muted); margin-top: 9px; font-size: 14px; }
+    .hero-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 18px; background: #eaf0ff; font-size: 27px; flex-shrink: 0; }
+    .panel {
+      background: var(--surface); border: 1px solid rgba(226,232,242,.9);
+      border-radius: 18px; padding: 22px; margin-bottom: 16px; box-shadow: var(--shadow);
     }
-    button:disabled { opacity: .5; cursor: not-allowed; }
+    .connect-panel { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .connect-copy strong { display: block; font-size: 15px; margin-bottom: 5px; }
+    .connect-copy span { color: var(--muted); font-size: 13px; }
+    .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; margin-top: 13px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #aab3c2; }
+    .status.ok { color: var(--green); }
+    .status.ok .status-dot { background: #21a675; }
+    .status.error { color: #c24141; }
+    .status.error .status-dot { background: #dc5555; }
+    .btn {
+      border: 0; border-radius: 11px; padding: 12px 17px; color: white;
+      background: var(--blue); font-weight: 700; font-size: 13px;
+      box-shadow: 0 5px 13px rgba(49,94,232,.18); transition: transform .15s, opacity .15s;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: .55; cursor: wait; transform: none; }
+    .btn.secondary { background: #eef2f8; color: #39465d; box-shadow: none; }
+    .btn.small { padding: 9px 12px; }
+    .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .section-heading h2 { font-size: 16px; margin: 0; letter-spacing: -.02em; }
+    .section-kicker { color: var(--muted); font-size: 12px; }
+    label { display: block; color: #657188; font-size: 12px; font-weight: 650; margin: 0 0 7px; }
     input, select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #d8dee8;
-      border-radius: 8px;
-      background: white;
+      width: 100%; min-height: 44px; padding: 10px 12px; color: var(--ink);
+      border: 1px solid #dfe5ef; border-radius: 10px; background: #fff; outline: none;
     }
-    label { display: block; margin: 12px 0 6px; font-size: 14px; }
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .status { font-size: 14px; color: #64748b; margin-top: 12px; }
-    .category-title {
-      font-size: 17px;
-      font-weight: bold;
-      padding: 12px 0 8px;
-      border-bottom: 1px solid #e8edf3;
-      margin-top: 12px;
-    }
-    .item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 13px 2px;
-      border-bottom: 1px solid #f0f2f5;
-    }
-    .item input {
-      width: 20px;
-      height: 20px;
-      margin: 2px 0 0;
-      flex-shrink: 0;
-      accent-color: #2563eb;
-    }
+    input:focus, select:focus { border-color: #8da7ff; box-shadow: 0 0 0 3px rgba(49,94,232,.09); }
+    .trip-layout { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+    .trip-date { color: var(--muted); font-size: 12px; margin-top: 9px; }
+    .new-trip { border-top: 1px solid var(--line); margin-top: 19px; padding-top: 17px; }
+    .new-trip summary { cursor: pointer; color: #43516a; font-size: 13px; font-weight: 700; list-style: none; }
+    .new-trip summary::-webkit-details-marker { display: none; }
+    .new-trip summary:before { content: "+"; display: inline-grid; place-items: center; width: 21px; height: 21px; margin-right: 8px; border-radius: 7px; color: var(--blue); background: var(--blue-soft); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+    .form-actions { display: flex; justify-content: flex-end; }
+    .overview { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+    .overview-title { font-size: 15px; font-weight: 750; }
+    .overview-sub { color: var(--muted); font-size: 12px; margin-top: 5px; }
+    .percent { font-size: 27px; line-height: 1; font-weight: 800; color: var(--blue); letter-spacing: -.05em; }
+    .progress-track { width: 100%; height: 8px; background: #edf1f7; border-radius: 20px; overflow: hidden; margin-top: 17px; }
+    .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, #4775f5, #7b9bff); border-radius: inherit; transition: width .25s ease; }
+    .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 11px; color: var(--muted); font-size: 12px; }
+    .stats b { color: var(--ink); }
+    .list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .search-wrap { position: relative; flex: 1; max-width: 310px; }
+    .search-wrap input { min-height: 40px; padding-left: 36px; font-size: 13px; background: #f9faff; }
+    .search-icon { position: absolute; left: 12px; top: 11px; color: #8792a6; font-size: 14px; }
+    .category { border: 1px solid var(--line); border-radius: 13px; margin-top: 11px; overflow: hidden; }
+    .category-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; background: #fbfcff; }
+    .category-name { font-size: 13px; font-weight: 750; }
+    .category-count { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 14px; border-top: 1px solid #f0f2f6; transition: background .15s; }
+    .item:hover { background: #fbfcff; }
+    .item input { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; min-height: 20px; padding: 0; margin: 1px 0 0; border: 1.5px solid #cbd4e2; border-radius: 6px; flex: 0 0 20px; cursor: pointer; }
+    .item input:checked { background: var(--blue); border-color: var(--blue); }
+    .item input:checked:after { content: "✓"; display: block; color: #fff; font-size: 14px; font-weight: 800; line-height: 18px; text-align: center; }
     .item-info { flex: 1; min-width: 0; }
-    .item-name { font-weight: 500; }
-    .item-note { font-size: 13px; color: #8993a3; margin-top: 4px; }
-    .item.checked .item-name {
-      color: #9aa3af;
-      text-decoration: line-through;
-    }
-    .muted { color: #8993a3; font-size: 13px; }
-    .hidden { display: none; }
-    .progress { margin-top: 12px; font-size: 14px; color: #2563eb; }
-    @media (max-width: 520px) {
-      .form-grid { grid-template-columns: 1fr; }
-      body { padding: 18px 12px 40px; }
+    .item-name { font-size: 13px; font-weight: 650; line-height: 1.5; }
+    .item-note { color: #929caf; font-size: 11px; line-height: 1.5; margin-top: 3px; }
+    .item.checked .item-name { color: #9aa4b4; text-decoration: line-through; }
+    .quantity { color: #8792a6; font-size: 11px; font-weight: 600; margin-left: 5px; }
+    .empty { text-align: center; color: var(--muted); padding: 32px 12px; font-size: 13px; }
+    .hidden { display: none !important; }
+    .footer { text-align: center; color: #a0a9b8; font-size: 11px; padding: 10px; }
+    @media (max-width: 560px) {
+      body { padding: 23px 12px 42px; }
+      .panel { padding: 17px; border-radius: 15px; }
+      .connect-panel { align-items: flex-start; flex-direction: column; }
+      .connect-panel .btn { width: 100%; }
+      .trip-layout { grid-template-columns: 1fr; }
+      .trip-layout .btn { width: 100%; }
+      .form-grid { grid-template-columns: 1fr; gap: 10px; }
+      .overview { grid-template-columns: 1fr auto; }
+      .list-toolbar { align-items: stretch; flex-direction: column; }
+      .search-wrap { max-width: none; }
     }
   </style>
 </head>
-
 <body>
-<div class="container">
-  <h1>🧳 Travel Luggage Checklist</h1>
-  <div class="subtitle">你的專屬旅遊行李清單</div>
+  <main class="container">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">TRAVEL ORGANIZER</div>
+        <h1>行李清單</h1>
+        <div class="subtitle">每趟旅程都準備妥當，出發更安心。</div>
+      </div>
+      <div class="hero-icon" aria-hidden="true">🧳</div>
+    </header>
 
-  <section class="panel">
-    <button id="connectBtn" onclick="connectGoogle()">
-      使用 Google 帳戶授權
-    </button>
-    <div id="status" class="status">尚未連接 Google 試算表</div>
-  </section>
-
-  <div id="app" class="hidden">
     <section class="panel">
-      <h3>📍 選擇旅遊行程</h3>
-      <label for="tripSelect">目前旅遊</label>
-      <select id="tripSelect" onchange="selectTrip(this.value)">
-        <option value="">請選擇旅遊</option>
-      </select>
+      <div class="connect-panel">
+        <div class="connect-copy">
+          <strong>Google 雲端同步</strong>
+          <span>使用你的 Google 試算表保存旅遊與勾選進度</span>
+          <div id="status" class="status"><i class="status-dot"></i><span id="statusText">尚未連接 Google 試算表</span></div>
+        </div>
+        <button id="connectBtn" class="btn" onclick="connectGoogle()">連接 Google 帳戶</button>
+      </div>
     </section>
 
-    <section class="panel">
-      <h3>➕ 新增旅遊</h3>
-      <form id="tripForm" onsubmit="createTrip(event)">
-        <label for="tripName">旅遊名稱</label>
-        <input id="tripName" required placeholder="例如：2026 東京之旅">
-
-        <div class="form-grid">
+    <div id="app" class="hidden">
+      <section class="panel">
+        <div class="section-heading">
+          <h2>📍 我的旅程</h2>
+          <span class="section-kicker">選擇要整理的旅遊</span>
+        </div>
+        <div class="trip-layout">
           <div>
-            <label for="startDate">出發日期</label>
-            <input id="startDate" type="date" required>
+            <label for="tripSelect">目前旅遊</label>
+            <select id="tripSelect" onchange="selectTrip(this.value)">
+              <option value="">請選擇旅遊</option>
+            </select>
+            <div id="tripDate" class="trip-date"></div>
           </div>
+          <button class="btn secondary" type="button" onclick="reloadData()">↻ 重新同步</button>
+        </div>
+        <details class="new-trip">
+          <summary>新增一趟旅遊</summary>
+          <form id="tripForm" onsubmit="createTrip(event)">
+            <label for="tripName" style="margin-top:15px">旅遊名稱</label>
+            <input id="tripName" required maxlength="80" placeholder="例如：2027 東京之旅">
+            <div class="form-grid">
+              <div>
+                <label for="startDate">出發日期</label>
+                <input id="startDate" type="date" required>
+              </div>
+              <div>
+                <label for="endDate">結束日期</label>
+                <input id="endDate" type="date" required>
+              </div>
+            </div>
+            <div class="form-actions"><button class="btn" type="submit" id="createBtn">建立旅遊</button></div>
+          </form>
+        </details>
+      </section>
+
+      <section id="overviewPanel" class="panel hidden">
+        <div class="overview">
           <div>
-            <label for="endDate">結束日期</label>
-            <input id="endDate" type="date" required>
+            <div class="overview-title">打包完成度</div>
+            <div class="overview-sub">慢慢確認，不要遺漏重要物品</div>
+          </div>
+          <div id="percent" class="percent">0%</div>
+        </div>
+        <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+        <div class="stats">
+          <span>已完成 <b id="doneCount">0</b> 項</span>
+          <span>尚未完成 <b id="leftCount">0</b> 項</span>
+          <span>總共 <b id="totalCount">0</b> 項</span>
+        </div>
+      </section>
+
+      <section id="listPanel" class="panel hidden">
+        <div class="section-heading">
+          <h2>🎒 行李項目</h2>
+          <span class="section-kicker">勾選後自動儲存</span>
+        </div>
+        <div class="list-toolbar">
+          <div id="listSummary" class="section-kicker">所有分類</div>
+          <div class="search-wrap">
+            <span class="search-icon">⌕</span>
+            <input id="searchInput" type="search" placeholder="搜尋行李項目…" oninput="renderItems()">
           </div>
         </div>
-        <br>
-        <button type="submit" id="createBtn">建立旅遊</button>
-      </form>
-    </section>
-
-    <section class="panel">
-      <h3>🎒 行李清單</h3>
-      <div id="tripInfo" class="muted">請先選擇一趟旅遊</div>
-      <div id="progress" class="progress"></div>
-      <div id="items"></div>
-    </section>
-  </div>
-</div>
+        <div id="items"></div>
+      </section>
+    </div>
+    <div class="footer">Travel Luggage Checklist · Powered by Google Sheets</div>
+  </main>
 
 <script>
-const CLIENT_ID =
-  "229078001792-gmdo6jj61sciidcdmpuegqmotglujt3d.apps.googleusercontent.com";
-
-const SPREADSHEET_ID =
-  "1QGX7B2u_JPPKayvB-NC3sSuoks4FFb5ZlgixpsZGmyw";
-
+const CLIENT_ID = "229078001792-gmdo6jj61sciidcdmpuegqmotglujt3d.apps.googleusercontent.com";
+const SPREADSHEET_ID = "1QGX7B2u_JPPKayvB-NC3sSuoks4FFb5ZlgixpsZGmyw";
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
 let tokenClient;
@@ -153,27 +218,23 @@ let items = [];
 let trips = [];
 let statuses = [];
 let currentTripId = "";
+let savingItems = new Set();
 
 const $ = id => document.getElementById(id);
 
-function setStatus(message) {
-  $("status").textContent = message;
+function setStatus(message, type) {
+  $("statusText").textContent = message;
+  $("status").className = "status" + (type ? " " + type : "");
 }
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   })[char]);
 }
 
 function isTrue(value) {
-  return ["true", "1", "yes", "是"].includes(
-    String(value).trim().toLowerCase()
-  );
+  return ["true", "1", "yes", "是"].includes(String(value).trim().toLowerCase());
 }
 
 function isActive(value) {
@@ -188,134 +249,86 @@ function rowNumberFromRange(range) {
 
 function initGoogle() {
   if (!window.google?.accounts?.oauth2) return false;
-
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPE,
     callback: async response => {
       if (response.error) {
-        setStatus("Google 授權失敗：" + response.error);
+        setStatus("Google 授權失敗：" + response.error, "error");
         return;
       }
-
       accessToken = response.access_token;
-      setStatus("Google 授權成功，正在讀取行李清單…");
-
+      setStatus("授權成功，正在同步資料…");
       try {
         await loadAllData();
         $("app").classList.remove("hidden");
-        $("connectBtn").textContent = "重新授權 Google";
-        setStatus("已連接 Google 試算表");
+        $("connectBtn").textContent = "重新授權";
+        setStatus("已連接 Google 試算表", "ok");
       } catch (error) {
-        setStatus("讀取失敗：" + error.message);
+        setStatus("讀取失敗：" + error.message, "error");
       }
     }
   });
-
   return true;
 }
 
 function connectGoogle() {
   if (!window.google?.accounts?.oauth2) {
-    setStatus("Google 授權程式尚未載入，請稍後再試");
+    setStatus("Google 授權程式尚未載入，請稍後再試", "error");
     return;
   }
-
   if (!tokenClient && !initGoogle()) return;
-
   tokenClient.requestAccessToken();
 }
 
 async function sheetsRequest(range, method = "GET", body = null) {
   if (!accessToken) throw new Error("尚未取得 Google 授權");
-
-  const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
-    `/values/${encodeURIComponent(range)}` +
-    (method === "GET" ? "?majorDimension=ROWS" : "");
-
+  const url = "https://sheets.googleapis.com/v4/spreadsheets/" + SPREADSHEET_ID +
+    "/values/" + encodeURIComponent(range) + (method === "GET" ? "?majorDimension=ROWS" : "");
   const response = await fetch(url, {
     method,
-    headers: {
-      Authorization: "Bearer " + accessToken,
-      "Content-Type": "application/json"
-    },
+    headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
     ...(body ? { body: JSON.stringify(body) } : {})
   });
-
   const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error?.message || "Google Sheets API 錯誤");
-  }
-
+  if (!response.ok) throw new Error(result.error?.message || "Google Sheets API 錯誤");
   return result;
 }
 
 async function appendRows(range, values) {
-  const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
-    `/values/${encodeURIComponent(range)}:append` +
-    "?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS";
-
+  const url = "https://sheets.googleapis.com/v4/spreadsheets/" + SPREADSHEET_ID +
+    "/values/" + encodeURIComponent(range) + ":append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS";
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: "Bearer " + accessToken,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      majorDimension: "ROWS",
-      values
-    })
+    headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+    body: JSON.stringify({ majorDimension: "ROWS", values })
   });
-
   const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error?.message || "新增資料失敗");
-  }
-
+  if (!response.ok) throw new Error(result.error?.message || "新增資料失敗");
   return result;
 }
 
 async function updateRow(range, values) {
-  const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
-    `/values/${encodeURIComponent(range)}` +
-    "?valueInputOption=USER_ENTERED";
-
+  const url = "https://sheets.googleapis.com/v4/spreadsheets/" + SPREADSHEET_ID +
+    "/values/" + encodeURIComponent(range) + "?valueInputOption=USER_ENTERED";
   const response = await fetch(url, {
     method: "PUT",
-    headers: {
-      Authorization: "Bearer " + accessToken,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      majorDimension: "ROWS",
-      values: [values]
-    })
+    headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+    body: JSON.stringify({ majorDimension: "ROWS", values: [values] })
   });
-
   const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error?.message || "更新資料失敗");
-  }
-
+  if (!response.ok) throw new Error(result.error?.message || "更新資料失敗");
   return result;
 }
 
 async function readSheet(name) {
-  const result = await sheetsRequest(`${name}!A:Z`);
+  const result = await sheetsRequest(name + "!A:Z");
   return result.values || [];
 }
 
 async function loadAllData() {
   const [itemRows, tripRows, statusRows] = await Promise.all([
-    readSheet("Items"),
-    readSheet("Trips"),
-    readSheet("CheckStatus")
+    readSheet("Items"), readSheet("Trips"), readSheet("CheckStatus")
   ]);
 
   items = itemRows.slice(1).map((row, index) => ({
@@ -348,7 +361,6 @@ async function loadAllData() {
   })).filter(status => status.tripId && status.itemId);
 
   renderTrips();
-
   if (currentTripId && trips.some(t => t.tripId === currentTripId)) {
     $("tripSelect").value = currentTripId;
     renderItems();
@@ -360,21 +372,27 @@ async function loadAllData() {
   }
 }
 
+async function reloadData() {
+  const button = document.querySelector(".trip-layout .btn");
+  button.disabled = true;
+  setStatus("正在重新同步…");
+  try {
+    await loadAllData();
+    setStatus("資料已更新", "ok");
+  } catch (error) {
+    setStatus("同步失敗：" + error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function renderTrips() {
   const select = $("tripSelect");
   const previous = currentTripId;
-
-  select.innerHTML =
-    '<option value="">請選擇旅遊</option>' +
-    trips.map(trip => `
-      <option value="${escapeHtml(trip.tripId)}">
-        ${escapeHtml(trip.tripName)}
-      </option>
-    `).join("");
-
-  if (trips.some(t => t.tripId === previous)) {
-    select.value = previous;
-  }
+  select.innerHTML = '<option value="">請選擇旅遊</option>' + trips.map(trip =>
+    '<option value="' + escapeHtml(trip.tripId) + '">' + escapeHtml(trip.tripName) + '</option>'
+  ).join("");
+  if (trips.some(t => t.tripId === previous)) select.value = previous;
 }
 
 function selectTrip(tripId) {
@@ -384,121 +402,109 @@ function selectTrip(tripId) {
 }
 
 function getStatus(itemId) {
-  return statuses.find(s =>
-    s.tripId === currentTripId && s.itemId === itemId
-  );
+  return statuses.find(s => s.tripId === currentTripId && s.itemId === itemId);
 }
 
 function renderItems() {
   const container = $("items");
   const trip = trips.find(t => t.tripId === currentTripId);
+  const overview = $("overviewPanel");
+  const listPanel = $("listPanel");
 
   if (!trip) {
-    $("tripInfo").textContent = "請先選擇一趟旅遊";
-    $("progress").textContent = "";
+    overview.classList.add("hidden");
+    listPanel.classList.add("hidden");
+    $("tripDate").textContent = trips.length ? "請選擇一趟旅遊" : "尚未建立旅遊，請先新增一趟旅遊。";
     container.innerHTML = "";
     return;
   }
 
-  $("tripInfo").textContent =
-    `${trip.tripName}｜${trip.startDate || "未設定日期"} ～ ${trip.endDate || "未設定日期"}`;
+  $("tripDate").textContent = (trip.startDate || "未設定日期") + " — " + (trip.endDate || "未設定日期");
+  overview.classList.remove("hidden");
+  listPanel.classList.remove("hidden");
 
-  const categories = [...new Set(items.map(item => item.category))];
+  const query = $("searchInput").value.trim().toLowerCase();
+  const visibleItems = items.filter(item =>
+    !query || [item.itemName, item.category, item.note].join(" ").toLowerCase().includes(query)
+  );
 
+  const done = items.filter(item => getStatus(item.itemId)?.checked).length;
+  const total = items.length;
+  const percent = total ? Math.round(done / total * 100) : 0;
+  $("percent").textContent = percent + "%";
+  $("progressFill").style.width = percent + "%";
+  $("doneCount").textContent = done;
+  $("leftCount").textContent = Math.max(0, total - done);
+  $("totalCount").textContent = total;
+  $("listSummary").textContent = query ? "搜尋結果 " + visibleItems.length + " 項" : "共 " + total + " 個行李項目";
+
+  if (!visibleItems.length) {
+    container.innerHTML = '<div class="empty">' + (query ? "找不到符合的行李項目" : "目前沒有啟用的行李項目") + '</div>';
+    return;
+  }
+
+  const categories = [...new Set(visibleItems.map(item => item.category))];
   let html = "";
-
   categories.forEach(category => {
-    const categoryItems = items.filter(item => item.category === category);
-
-    html += `<div class="category-title">${escapeHtml(category)}</div>`;
+    const categoryItems = visibleItems.filter(item => item.category === category);
+    const categoryDone = categoryItems.filter(item => getStatus(item.itemId)?.checked).length;
+    html += '<div class="category"><div class="category-head"><span class="category-name">' +
+      escapeHtml(category) + '</span><span class="category-count">' +
+      categoryDone + ' / ' + categoryItems.length + ' 完成</span></div>';
 
     categoryItems.forEach(item => {
-      const status = getStatus(item.itemId);
-      const checked = status?.checked || false;
-
-      html += `
-        <div class="item ${checked ? "checked" : ""}">
-          <input
-            type="checkbox"
-            ${checked ? "checked" : ""}
-            onchange="toggleItem('${escapeHtml(item.itemId)}', this)"
-          >
-          <div class="item-info">
-            <div class="item-name">
-              ${escapeHtml(item.itemName)}
-              ${item.quantity ? ` × ${escapeHtml(item.quantity)}` : ""}
-            </div>
-            ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ""}
-          </div>
-        </div>
-      `;
+      const checked = !!getStatus(item.itemId)?.checked;
+      html += '<label class="item ' + (checked ? "checked" : "") + '">' +
+        '<input type="checkbox" ' + (checked ? "checked " : "") +
+        (savingItems.has(item.itemId) ? "disabled " : "") +
+        'onchange="toggleItem(\'' + escapeHtml(item.itemId) + '\', this)">' +
+        '<span class="item-info"><span class="item-name">' + escapeHtml(item.itemName) +
+        (item.quantity ? '<span class="quantity">× ' + escapeHtml(item.quantity) + '</span>' : '') +
+        '</span>' + (item.note ? '<span class="item-note">' + escapeHtml(item.note) + '</span>' : '') +
+        '</span></label>';
     });
+    html += '</div>';
   });
-
-  container.innerHTML = html || '<p class="muted">目前沒有啟用的行李項目。</p>';
-  renderProgress();
-}
-
-function renderProgress() {
-  const total = items.length;
-  const done = items.filter(item => getStatus(item.itemId)?.checked).length;
-
-  $("progress").textContent =
-    total ? `已完成 ${done} / ${total} 項` : "";
+  container.innerHTML = html;
 }
 
 async function toggleItem(itemId, checkbox) {
   const checked = checkbox.checked;
-  const item = items.find(i => i.itemId === itemId);
-  if (!item || !currentTripId) return;
-
-  checkbox.disabled = true;
-
+  if (!items.some(i => i.itemId === itemId) || !currentTripId) return;
+  savingItems.add(itemId);
+  renderItems();
   const existing = getStatus(itemId);
   const updatedAt = new Date().toISOString();
 
   try {
     if (existing) {
-      await updateRow(
-        `CheckStatus!A${existing.rowNumber}:D${existing.rowNumber}`,
-        [currentTripId, itemId, checked, updatedAt]
-      );
-
+      await updateRow("CheckStatus!A" + existing.rowNumber + ":D" + existing.rowNumber,
+        [currentTripId, itemId, checked, updatedAt]);
       existing.checked = checked;
       existing.updatedAt = updatedAt;
     } else {
-      const result = await appendRows("CheckStatus!A:D", [[
-        currentTripId, itemId, checked, updatedAt
-      ]]);
-
+      const result = await appendRows("CheckStatus!A:D", [[currentTripId, itemId, checked, updatedAt]]);
       statuses.push({
-        tripId: currentTripId,
-        itemId,
-        checked,
-        updatedAt,
+        tripId: currentTripId, itemId, checked, updatedAt,
         rowNumber: rowNumberFromRange(result.updates?.updatedRange)
       });
     }
-
-    renderItems();
+    setStatus("已同步儲存", "ok");
   } catch (error) {
-    checkbox.checked = !checked;
-    setStatus("儲存失敗：" + error.message);
+    setStatus("儲存失敗：" + error.message, "error");
     alert("勾選狀態儲存失敗，請確認網路及 Google 授權。");
   } finally {
-    checkbox.disabled = false;
+    savingItems.delete(itemId);
+    renderItems();
   }
 }
 
 async function createTrip(event) {
   event.preventDefault();
-
   const name = $("tripName").value.trim();
   const start = $("startDate").value;
   const end = $("endDate").value;
-
   if (!name || !start || !end) return;
-
   if (end < start) {
     alert("結束日期不能早於出發日期");
     return;
@@ -506,29 +512,21 @@ async function createTrip(event) {
 
   const tripId = "trip-" + Date.now();
   const createdAt = new Date().toISOString();
-
   $("createBtn").disabled = true;
-
   try {
-    const result = await appendRows("Trips!A:E", [[
-      tripId, name, start, end, createdAt
-    ]]);
-
+    const result = await appendRows("Trips!A:E", [[tripId, name, start, end, createdAt]]);
     trips.push({
-      tripId,
-      tripName: name,
-      startDate: start,
-      endDate: end,
-      createdAt,
+      tripId, tripName: name, startDate: start, endDate: end, createdAt,
       rowNumber: rowNumberFromRange(result.updates?.updatedRange)
     });
-
     $("tripForm").reset();
+    $("tripForm").closest("details").open = false;
     renderTrips();
     selectTrip(tripId);
-    setStatus("旅遊已建立並儲存至 Google 試算表");
+    setStatus("旅遊已建立並同步至雲端", "ok");
   } catch (error) {
     alert("建立旅遊失敗：" + error.message);
+    setStatus("建立失敗：" + error.message, "error");
   } finally {
     $("createBtn").disabled = false;
   }
