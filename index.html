@@ -100,6 +100,13 @@
     .quantity { color: #8792a6; font-size: 11px; font-weight: 600; margin-left: 5px; }
     .empty { text-align: center; color: var(--muted); padding: 32px 12px; font-size: 13px; }
     .hidden { display: none !important; }
+    .manage-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .manage-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:13px 0; border-top:1px solid var(--line); }
+    .manage-name { font-size:13px; font-weight:700; }
+    .manage-meta { color:var(--muted); font-size:11px; margin-top:4px; }
+    .manage-row.inactive { opacity:.58; }
+    .form-field { margin:14px 0; }
+    .manage-form-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
     .footer { text-align: center; color: #a0a9b8; font-size: 11px; padding: 10px; }
     @media (max-width: 560px) {
       body { padding: 23px 12px 42px; }
@@ -192,7 +199,7 @@
       <section id="listPanel" class="panel hidden">
         <div class="section-heading">
           <h2>🎒 行李項目</h2>
-          <span class="section-kicker">勾選後自動儲存</span>
+          <div class="manage-actions"><span class="section-kicker">勾選後自動儲存</span><button class="btn secondary small" type="button" onclick="showManager()">⚙ 管理清單</button></div>
         </div>
         <div class="list-toolbar">
           <div id="listSummary" class="section-kicker">所有分類</div>
@@ -202,6 +209,28 @@
           </div>
         </div>
         <div id="items"></div>
+      </section>
+      <section id="managerPanel" class="panel hidden">
+        <div class="section-heading">
+          <h2>⚙ 行李清單管理</h2>
+          <button class="btn secondary small" type="button" onclick="hideManager()">返回行李清單</button>
+        </div>
+        <p class="section-kicker">新增、修改或停用共用行李項目；變更會直接同步到 Google Sheets。</p>
+        <form id="itemForm" onsubmit="saveItem(event)">
+          <input id="editItemId" type="hidden">
+          <div class="form-field"><label for="itemCategory">分類</label><input id="itemCategory" required maxlength="40" placeholder="例如：證件、衣物、電子用品"></div>
+          <div class="form-grid">
+            <div><label for="itemName">行李項目</label><input id="itemName" required maxlength="80" placeholder="例如：護照"></div>
+            <div><label for="itemQuantity">數量</label><input id="itemQuantity" maxlength="30" placeholder="例如：1 本"></div>
+          </div>
+          <div class="form-field"><label for="itemNote">備註</label><input id="itemNote" maxlength="200" placeholder="選填"></div>
+          <div class="manage-form-actions">
+            <button id="cancelEditBtn" class="btn secondary hidden" type="button" onclick="resetItemForm()">取消編輯</button>
+            <button id="saveItemBtn" class="btn" type="submit">新增項目</button>
+          </div>
+        </form>
+        <div class="section-heading" style="margin-top:25px"><h2>所有項目</h2><span id="managerCount" class="section-kicker"></span></div>
+        <div id="managerItems"></div>
       </section>
     </div>
     <div class="footer">Travel Luggage Checklist · Powered by Google Sheets</div>
@@ -340,7 +369,7 @@ async function loadAllData() {
     active: isActive(row[5]),
     sortOrder: Number(row[6]) || index,
     rowNumber: index + 2
-  })).filter(item => item.itemId && item.itemName && item.active)
+  })).filter(item => item.itemId && item.itemName)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   trips = tripRows.slice(1).map((row, index) => ({
@@ -423,13 +452,14 @@ function renderItems() {
   overview.classList.remove("hidden");
   listPanel.classList.remove("hidden");
 
+  const activeItems = items.filter(item => item.active);
   const query = $("searchInput").value.trim().toLowerCase();
-  const visibleItems = items.filter(item =>
+  const visibleItems = activeItems.filter(item =>
     !query || [item.itemName, item.category, item.note].join(" ").toLowerCase().includes(query)
   );
 
-  const done = items.filter(item => getStatus(item.itemId)?.checked).length;
-  const total = items.length;
+  const done = activeItems.filter(item => getStatus(item.itemId)?.checked).length;
+  const total = activeItems.length;
   const percent = total ? Math.round(done / total * 100) : 0;
   $("percent").textContent = percent + "%";
   $("progressFill").style.width = percent + "%";
@@ -466,6 +496,116 @@ function renderItems() {
     html += '</div>';
   });
   container.innerHTML = html;
+}
+
+
+function showManager() {
+  $("overviewPanel").classList.add("hidden");
+  $("listPanel").classList.add("hidden");
+  $("managerPanel").classList.remove("hidden");
+  resetItemForm();
+  renderManagerItems();
+}
+
+function hideManager() {
+  $("managerPanel").classList.add("hidden");
+  if (currentTripId) {
+    $("overviewPanel").classList.remove("hidden");
+    $("listPanel").classList.remove("hidden");
+  }
+  renderItems();
+}
+
+function renderManagerItems() {
+  $("managerCount").textContent = items.length + " 個項目";
+  if (!items.length) {
+    $("managerItems").innerHTML = '<div class="empty">尚無行李項目</div>';
+    return;
+  }
+  $("managerItems").innerHTML = items.map(item => {
+    const id = JSON.stringify(item.itemId);
+    return '<div class="manage-row ' + (item.active ? "" : "inactive") + '">' +
+      '<div><div class="manage-name">' + escapeHtml(item.itemName) + '</div>' +
+      '<div class="manage-meta">' + escapeHtml(item.category) +
+      (item.quantity ? " · " + escapeHtml(item.quantity) : "") +
+      (item.active ? "" : " · 已停用") + '</div></div>' +
+      '<div class="manage-actions"><button class="btn secondary small" type="button" onclick="editItem(' + id + ')">修改</button>' +
+      '<button class="btn small" type="button" onclick="toggleItemActive(' + id + ')">' +
+      (item.active ? "停用" : "啟用") + '</button></div></div>';
+  }).join("");
+}
+
+function resetItemForm() {
+  $("itemForm").reset();
+  $("editItemId").value = "";
+  $("saveItemBtn").textContent = "新增項目";
+  $("cancelEditBtn").classList.add("hidden");
+}
+
+function editItem(itemId) {
+  const item = items.find(entry => entry.itemId === itemId);
+  if (!item) return;
+  $("editItemId").value = item.itemId;
+  $("itemCategory").value = item.category;
+  $("itemName").value = item.itemName;
+  $("itemQuantity").value = item.quantity;
+  $("itemNote").value = item.note;
+  $("saveItemBtn").textContent = "儲存修改";
+  $("cancelEditBtn").classList.remove("hidden");
+  $("itemCategory").focus();
+}
+
+async function saveItem(event) {
+  event.preventDefault();
+  const editId = $("editItemId").value;
+  const existing = items.find(item => item.itemId === editId);
+  const itemId = existing ? existing.itemId : (crypto.randomUUID ? crypto.randomUUID() : "item-" + Date.now());
+  const values = [
+    itemId, $("itemCategory").value.trim(), $("itemName").value.trim(),
+    $("itemQuantity").value.trim(), $("itemNote").value.trim(),
+    existing ? existing.active : true,
+    existing ? existing.sortOrder : items.reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1
+  ];
+  if (!values[1] || !values[2]) return;
+  $("saveItemBtn").disabled = true;
+  try {
+    if (existing) {
+      await updateRow("Items!A" + existing.rowNumber + ":G" + existing.rowNumber, values);
+      Object.assign(existing, {category:values[1], itemName:values[2], quantity:values[3], note:values[4], active:values[5], sortOrder:values[6]});
+    } else {
+      const result = await appendRows("Items!A:G", [values]);
+      items.push({itemId, category:values[1], itemName:values[2], quantity:values[3], note:values[4], active:true, sortOrder:values[6], rowNumber:rowNumberFromRange(result.updates?.updatedRange)});
+    }
+    resetItemForm();
+    renderManagerItems();
+    renderItems();
+    setStatus(existing ? "行李項目已更新並同步" : "行李項目已新增並同步", "ok");
+  } catch (error) {
+    alert("儲存行李項目失敗：" + error.message);
+    setStatus("儲存失敗：" + error.message, "error");
+  } finally {
+    $("saveItemBtn").disabled = false;
+  }
+}
+
+async function toggleItemActive(itemId) {
+  const item = items.find(entry => entry.itemId === itemId);
+  if (!item) return;
+  const nextActive = !item.active;
+  const action = nextActive ? "重新啟用" : "停用";
+  const warning = nextActive ? "" : "\n停用後不會出現在打包清單，但不會刪除既有資料。";
+  if (!confirm("確定要" + action + "「" + item.itemName + "」嗎？" + warning)) return;
+  try {
+    await updateRow("Items!A" + item.rowNumber + ":G" + item.rowNumber,
+      [item.itemId, item.category, item.itemName, item.quantity, item.note, nextActive, item.sortOrder]);
+    item.active = nextActive;
+    renderManagerItems();
+    renderItems();
+    setStatus("項目已" + action + "並同步", "ok");
+  } catch (error) {
+    alert(action + "失敗：" + error.message);
+    setStatus(action + "失敗：" + error.message, "error");
+  }
 }
 
 async function toggleItem(itemId, checkbox) {
